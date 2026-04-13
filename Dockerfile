@@ -133,7 +133,13 @@ RUN mkdir -p \
     storage/framework/views \
     storage/logs \
     storage/app/public \
-    bootstrap/cache
+    bootstrap/cache \
+    /var/log/supervisor \
+    /var/log/nginx
+
+RUN touch storage/logs/worker.log storage/logs/worker-error.log
+
+RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
 RUN groupadd -g ${WWWGROUP} appgroup || true \
     && useradd -u ${WWWUSER} -g ${WWWGROUP} -s /bin/bash -m appuser || true \
@@ -145,7 +151,7 @@ RUN groupadd -g ${WWWGROUP} appgroup || true \
 
 EXPOSE 80
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=15s --timeout=10s --start-period=30s --retries=5 \
     CMD curl -f http://localhost/up || exit 1
 
 ENTRYPOINT ["entrypoint.sh"]
