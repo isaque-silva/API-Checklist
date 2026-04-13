@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 echo "============================================"
 echo "  API Checklist - Container Starting"
@@ -7,8 +6,22 @@ echo "============================================"
 
 cd /var/www/html
 
+# Create .env from environment variables if it doesn't exist
+if [ ! -f ".env" ]; then
+    echo "[entrypoint] Creating .env from environment variables..."
+    env | grep -E '^(APP_|DB_|MAIL_|REDIS_|CACHE_|QUEUE_|SESSION_|LOG_|BROADCAST_|FILESYSTEM_|BCRYPT_|PHP_|VITE_|RUN_)' | sort > .env
+
+    # Ensure essential defaults
+    grep -q "^APP_ENV=" .env || echo "APP_ENV=production" >> .env
+    grep -q "^APP_DEBUG=" .env || echo "APP_DEBUG=false" >> .env
+    grep -q "^APP_KEY=" .env || echo "APP_KEY=" >> .env
+
+    echo "[entrypoint] .env created with $(wc -l < .env) variables."
+fi
+
 # Generate APP_KEY if not set
-if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
+CURRENT_KEY=$(grep "^APP_KEY=" .env | cut -d'=' -f2-)
+if [ -z "$CURRENT_KEY" ] || [ "$CURRENT_KEY" = "base64:" ]; then
     echo "[entrypoint] Generating APP_KEY..."
     php artisan key:generate --force --no-interaction
 fi
@@ -22,13 +35,21 @@ fi
 # Run migrations
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
     echo "[entrypoint] Running migrations..."
-    php artisan migrate --force --no-interaction 2>&1 || echo "[entrypoint] WARNING: Some migrations failed."
+    if php artisan migrate --force --no-interaction 2>&1; then
+        echo "[entrypoint] Migrations completed."
+    else
+        echo "[entrypoint] WARNING: Some migrations failed."
+    fi
 fi
 
 # Run seeders (only on first deploy)
 if [ "${RUN_SEEDERS:-false}" = "true" ]; then
     echo "[entrypoint] Running seeders..."
-    php artisan db:seed --force --no-interaction 2>&1 || echo "[entrypoint] WARNING: Some seeders failed."
+    if php artisan db:seed --force --no-interaction 2>&1; then
+        echo "[entrypoint] Seeders completed."
+    else
+        echo "[entrypoint] WARNING: Some seeders failed."
+    fi
 fi
 
 # Cache config/routes/views
