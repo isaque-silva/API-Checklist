@@ -18,7 +18,9 @@ RUN npm run build
 
 
 # ── Stage 2: Composer dependencies ──────────────────────────────────────────
-FROM composer:2 AS composer-build
+FROM php:8.2-cli-bookworm AS composer-build
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /build
 
