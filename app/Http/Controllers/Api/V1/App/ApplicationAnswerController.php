@@ -31,7 +31,6 @@ class ApplicationAnswerController extends Controller
                 'email_group_id' => 'nullable|uuid'
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Se a validação falhar (422), retorna a mesma mensagem do 404
             return response()->json([
                 'error' => 'Checklist não encontrado.',
                 'message' => 'O checklist_id informado não foi encontrado no sistema.',
@@ -39,9 +38,15 @@ class ApplicationAnswerController extends Controller
             ], 404);
         }
 
-        // Verifica se o checklist existe
-        $checklistExists = \App\Models\Chk\Checklist::where('id', $data['checklist_id'])->exists();
-        if (!$checklistExists) {
+        $user = $request->get('auth_user');
+        $clientId = $user->client_id;
+
+        $checklistQuery = \App\Models\Chk\Checklist::where('id', $data['checklist_id']);
+        if (!$user->is_super_admin && $clientId) {
+            $checklistQuery->where('client_id', $clientId);
+        }
+
+        if (!$checklistQuery->exists()) {
             return response()->json([
                 'error' => 'Checklist não encontrado.',
                 'message' => 'O checklist_id informado não foi encontrado no sistema.',
@@ -54,10 +59,11 @@ class ApplicationAnswerController extends Controller
         try {
             $application = Application::create([
                 'id' => Str::uuid(),
+                'client_id' => $clientId,
                 'checklist_id' => $data['checklist_id'],
                 'email_group_id' => $data['email_group_id'] ?? null,
                 'status' => 'in_progress',
-                'applied_at' => now(), 
+                'applied_at' => now(),
             ]);
 
             $application->refresh();
@@ -161,9 +167,16 @@ class ApplicationAnswerController extends Controller
         }
     }
 
-    public function show(string $applicationId)
+    public function show(Request $request, string $applicationId)
     {
-        $application = Application::with(['emailGroup', 'answers.options.attachments'])->find($applicationId);
+        $user = $request->get('auth_user');
+        $query = Application::with(['emailGroup', 'answers.options.attachments']);
+
+        if (!$user->is_super_admin) {
+            $query->forClient($user->client_id);
+        }
+
+        $application = $query->find($applicationId);
 
         if (!$application) {
             return response()->json(['error' => 'Aplicação não encontrada.'], 404);
@@ -322,11 +335,16 @@ class ApplicationAnswerController extends Controller
             }
         }
 
+        $user = $request->get('auth_user');
         $query = Application::with([
-            'emailGroup', 
-            'answers.options.attachments', 
+            'emailGroup',
+            'answers.options.attachments',
             'answers.item.type'
         ]);
+
+        if (!$user->is_super_admin) {
+            $query->forClient($user->client_id);
+        }
 
         if (in_array($status, ['in_progress', 'completed', 'deleted'])) {
             $query->where('status', $status);
@@ -470,9 +488,16 @@ class ApplicationAnswerController extends Controller
         ]);
     }
 
-    public function destroy(string $applicationId)
+    public function destroy(Request $request, string $applicationId)
     {
-        $application = Application::find($applicationId);
+        $user = $request->get('auth_user');
+        $query = Application::query();
+
+        if (!$user->is_super_admin) {
+            $query->forClient($user->client_id);
+        }
+
+        $application = $query->find($applicationId);
 
         if (!$application) {
             return response()->json(['error' => 'Aplicação não encontrada.'], 404);

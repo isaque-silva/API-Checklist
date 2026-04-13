@@ -16,6 +16,7 @@ class Checklist extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'client_id',
         'title',
         'description',
         'email_group_id',
@@ -41,5 +42,18 @@ class Checklist extends Model
     public function emailGroup()
     {
         return $this->belongsTo(\App\Models\Sys\EmailGroup::class, 'email_group_id');
+    }
+
+    public function client()
+    {
+        return $this->belongsTo(\App\Models\Sys\Client::class, 'client_id');
+    }
+
+    public function scopeForClient($query, ?string $clientId)
+    {
+        if ($clientId) {
+            return $query->where('client_id', $clientId);
+        }
+        return $query;
     }
 }

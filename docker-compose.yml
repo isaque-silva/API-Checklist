@@ -1,0 +1,107 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: checklist-app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      APP_NAME: "Checklist APP"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost
+      APP_LOCALE: pt_BR
+      APP_FALLBACK_LOCALE: pt_BR
+      APP_FAKER_LOCALE: pt_BR
+      APP_TIMEZONE: America/Sao_Paulo
+      PHP_CLI_SERVER_WORKERS: 4
+      BCRYPT_ROUNDS: 12
+      LOG_CHANNEL: stack
+      LOG_STACK: single
+      LOG_LEVEL: error
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: checklist
+      DB_USERNAME: checklist
+      DB_PASSWORD: checklist_secret
+      SESSION_DRIVER: file
+      SESSION_LIFETIME: 120
+      BROADCAST_CONNECTION: log
+      FILESYSTEM_DISK: local
+      QUEUE_CONNECTION: database
+      CACHE_STORE: file
+      CACHE_PREFIX: checklist
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      MAIL_MAILER: smtp
+      MAIL_HOST: smtp.gmail.com
+      MAIL_PORT: 587
+      MAIL_ENCRYPTION: tls
+      MAIL_TIMEOUT: 120
+      RUN_MIGRATIONS: "true"
+      RUN_SEEDERS: "true"
+    volumes:
+      - app-storage:/var/www/html/storage/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - checklist-net
+
+  mysql:
+    image: mysql:8.0
+    container_name: checklist-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: checklist
+      MYSQL_USER: checklist
+      MYSQL_PASSWORD: checklist_secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=caching_sha2_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=256M
+      --max-connections=200
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_secret"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - checklist-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: checklist-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - checklist-net
+
+volumes:
+  mysql-data:
+  redis-data:
+  app-storage:
+
+networks:
+  checklist-net:
+    driver: bridge

@@ -4,31 +4,36 @@ namespace App\Http\Controllers\Api\V1\Chk;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-
 use App\Models\Chk\Checklist;
 
 class ChecklistController
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $checklists = Checklist::all();
+        $user = $request->get('auth_user');
+        $query = Checklist::query();
 
-        if(!$checklists->empty()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'No checklists found'
-            ], 404);
+        if (!$user->is_super_admin) {
+            $query->forClient($user->client_id);
         }
+
+        $checklists = $query->get();
 
         return response()->json($checklists);
     }
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
+        $user = $request->get('auth_user');
+        $query = Checklist::query();
 
-        $checklist = Checklist::find($id);
+        if (!$user->is_super_admin) {
+            $query->forClient($user->client_id);
+        }
 
-        if(!$checklist){
+        $checklist = $query->find($id);
+
+        if (!$checklist) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Checklist not found'
@@ -46,7 +51,8 @@ class ChecklistController
             'email_group_id' => 'nullable|uuid',
         ]);
 
-        $usuario = $request->get('login');
+        $user = $request->get('auth_user');
+        $validatedData['client_id'] = $user->client_id;
 
         $checklist = Checklist::create($validatedData);
 
@@ -61,9 +67,16 @@ class ChecklistController
             'email_group_id' => 'nullable|uuid',
         ]);
 
-        $checklist = Checklist::find($id);
+        $user = $request->get('auth_user');
+        $query = Checklist::query();
 
-        if(!$checklist){
+        if (!$user->is_super_admin) {
+            $query->forClient($user->client_id);
+        }
+
+        $checklist = $query->find($id);
+
+        if (!$checklist) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Checklist not found'
@@ -75,11 +88,18 @@ class ChecklistController
         return response()->json($checklist);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
-        $checklist = Checklist::find($id);
+        $user = $request->get('auth_user');
+        $query = Checklist::query();
 
-        if(!$checklist){
+        if (!$user->is_super_admin) {
+            $query->forClient($user->client_id);
+        }
+
+        $checklist = $query->find($id);
+
+        if (!$checklist) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Checklist not found'

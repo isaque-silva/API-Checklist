@@ -7,17 +7,23 @@ trait HasAudit
     public static function bootHasAudit()
     {
         static::creating(function ($model) {
-            $model->created_by = request()->get('login');
-            $model->updated_by = request()->get('login');
+            $user = request()->get('auth_user');
+            $login = $user ? $user->email : request()->get('login');
+            $model->created_by = $login;
+            $model->updated_by = $login;
         });
 
         static::updating(function ($model) {
-            $model->updated_by = request()->get('login');
+            $user = request()->get('auth_user');
+            $login = $user ? $user->email : request()->get('login');
+            $model->updated_by = $login;
         });
 
         static::deleting(function ($model) {
             if ($model->usesSoftDeletes()) {
-                $model->updated_by = request()->get('login');
+                $user = request()->get('auth_user');
+                $login = $user ? $user->email : request()->get('login');
+                $model->updated_by = $login;
                 $model->updated_at = now();
                 $model->save();
             }

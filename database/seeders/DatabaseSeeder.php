@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             FieldTypesSeeder::class,
             EvalOptionsSeeder::class,
+            SuperAdminSeeder::class,
         ]);
     }
 }

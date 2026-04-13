@@ -18,7 +18,7 @@ class Application extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'checklist_id', 'status', 'applied_at', 'completed_at', 'number',
+        'client_id', 'checklist_id', 'status', 'applied_at', 'completed_at', 'number',
         'created_by', 'updated_by',
     ];
     
@@ -74,9 +74,16 @@ class Application extends Model
         return $this->belongsTo(EmailGroup::class, 'email_group_id');
     }
 
-    // Accessor para herdar o email_group_id do checklist relacionado
-   // public function getEmailGroupIdAttribute()
-    //{
-    //    return $this->checklist ? $this->checklist->email_group_id : null;
-    //}
+    public function client()
+    {
+        return $this->belongsTo(\App\Models\Sys\Client::class, 'client_id');
+    }
+
+    public function scopeForClient($query, ?string $clientId)
+    {
+        if ($clientId) {
+            return $query->where('client_id', $clientId);
+        }
+        return $query;
+    }
 }
